@@ -75,7 +75,7 @@ module dynHarvestMod
   ! the units flag must match the units of harvest_varnames
   ! set this here because dynHarvest_init is called after alm_fates%init
   ! this flag is accessed only if namelist do_harvest is TRUE
-  integer, public          :: wood_harvest_units = hlm_harvest_area_fraction
+  integer, public          :: wood_harvest_units = hlm_harvest_carbon
   
   type(dyn_var_time_uninterp_type) :: harvest_vars(num_harvest_vars)   ! value of each harvest variable
 

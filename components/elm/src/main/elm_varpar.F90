@@ -183,6 +183,7 @@ contains
 
     ! FATES will potentially overwrite natpft_size,natpft_lb,natpft_ub
     ! following this routine
+    ! Shall also overwrite max_patch_per_col, which is used in multiple places
     
     max_patch_per_col= max(numpft+1, numcft, maxpatch_urb)
     mach_eps       = epsilon(1.0_r8)

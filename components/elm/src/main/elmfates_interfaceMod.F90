@@ -75,6 +75,9 @@ module ELMFatesInterfaceMod
    use elm_varpar        , only : i_met_lit, i_cel_lit, i_lig_lit
    use elm_varpar        , only : surfpft_lb, surfpft_ub
    use elm_varpar        , only : natpft_size, cft_size
+   use elm_varpar        , only : max_patch_per_col
+   use elm_varpar        , only : numcft
+   use elm_varpar        , only : maxpatch_urb
    use PhotosynthesisType , only : photosyns_type
    Use TopounitDataType  , only : topounit_atmospheric_flux, topounit_atmospheric_state
    use atm2lndType       , only : atm2lnd_type
@@ -155,7 +158,7 @@ module ELMFatesInterfaceMod
    use FatesPlantHydraulicsMod, only : InitHydrSites
    use FatesPlantHydraulicsMod, only : RestartHydrStates
 
-   use dynHarvestMod          , only : num_harvest_vars, harvest_varnames
+   use dynHarvestMod          , only : num_harvest_vars, harvest_varnames, wood_harvest_units
    use dynHarvestMod          , only : harvest_rates ! these are dynamic in space and time
    use dynHarvestMod          , only : num_harvest_vars, harvest_varnames, wood_harvest_units
 
@@ -318,7 +321,7 @@ contains
     call SetFatesGlobalElements1(use_fates,natpft_size,0)
 
     natpft_size = fates_maxPatchesPerSite
-
+    max_patch_per_col= max(natpft_size+1, numcft, maxpatch_urb)
 
     return
   end subroutine ELMFatesGlobals1
@@ -369,7 +372,7 @@ contains
 
      ! We will use this switch temporarily, until  we complete
      ! the ELM-FATES harvest integration
-     logical, parameter :: do_elm_fates_harvest = .false.
+     logical, parameter :: do_elm_fates_harvest = .true.
 
      if (use_fates) then
 
@@ -937,6 +940,7 @@ contains
             this%fates(nc)%bc_in(s)%hlm_harvest_catnames = harvest_varnames
             this%fates(nc)%bc_in(s)%hlm_harvest_units = wood_harvest_units
          end if
+         this%fates(nc)%bc_in(s)%site_area=col_pp%wtgcell(c)*grc_pp%area(g)*1e6_r8
 
       end do
 
@@ -2264,6 +2268,46 @@ contains
 
  ! ======================================================================================
 
+ subroutine wrap_WoodProducts(this, bounds_clump, fc, filterc)
+
+   ! !ARGUMENTS:
+   class(hlm_fates_interface_type), intent(inout) :: this
+   type(bounds_type)              , intent(in)    :: bounds_clump
+   integer                        , intent(in)    :: fc                   ! size of column filter
+   integer                        , intent(in)    :: filterc(fc)          ! column filter
+   
+   ! Locacs
+   integer                                        :: s,c,icc
+   integer                                        :: nc
+
+   associate(&
+         gpp     => col_cf%gpp    , &
+         ar     => col_cf%ar    , &
+         hrv_deadstemc_to_prod10c     => col_cf%hrv_deadstemc_to_prod10c    , &
+         hrv_deadstemc_to_prod100c    => col_cf%hrv_deadstemc_to_prod100c)
+ 
+    nc = bounds_clump%clump_index
+    ! Loop over columns
+    do icc = 1,fc
+       c = filterc(icc)
+       s = this%f2hmap(nc)%hsites(c)
+
+       ! Shijie: Pass harvested wood products to ELM variable
+       hrv_deadstemc_to_prod10c(c)  = this%fates(nc)%bc_out(s)%hrv_deadstemc_to_prod10c
+       hrv_deadstemc_to_prod100c(c) = this%fates(nc)%bc_out(s)%hrv_deadstemc_to_prod100c
+
+       ! Pass LUC related C fluxes which are calculated in FATES [gC m-2 s-1]
+       gpp(c) = this%fates(nc)%bc_out(s)%gpp_site*1e3
+       ar(c) = this%fates(nc)%bc_out(s)%ar_site*1e3
+
+    end do
+
+    end associate
+    return
+ end subroutine wrap_WoodProducts
+
+ ! ======================================================================================
+ 
  subroutine wrap_canopy_radiation(this, bounds_clump, &
          num_vegsol, filter_vegsol, coszen, surfalb_inst)
 
