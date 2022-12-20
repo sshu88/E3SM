@@ -218,6 +218,7 @@ module ELMFatesInterfaceMod
       procedure, public :: prep_canopyfluxes
       procedure, public :: wrap_canopy_radiation
       procedure, public :: wrap_update_hifrq_hist
+      procedure, public :: wrap_WoodProducts
       procedure, public :: TransferZ0mDisp
       procedure, public :: UpdateLitterFluxes
       procedure, private :: init_history_io

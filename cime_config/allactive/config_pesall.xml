@@ -1558,7 +1558,7 @@
         <MAX_MPITASKS_PER_NODE>42</MAX_MPITASKS_PER_NODE>
         <ntasks>
           <ntasks_atm>-4</ntasks_atm>
-          <ntasks_lnd>-4</ntasks_lnd>
+          <ntasks_lnd>-16</ntasks_lnd>
           <ntasks_rof>-4</ntasks_rof>
           <ntasks_ice>-4</ntasks_ice>
           <ntasks_ocn>-4</ntasks_ocn>
