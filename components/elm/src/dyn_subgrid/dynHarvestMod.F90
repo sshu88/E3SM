@@ -78,7 +78,7 @@ module dynHarvestMod
   ! set this here because dynHarvest_init is called after alm_fates%init
   ! this flag is accessed only if namelist do_harvest is TRUE
 
-  integer, public, parameter    :: wood_harvest_units = 2    ! 1 = area fraction, 2 = carbon
+  integer, public, parameter    :: wood_harvest_units = 1    ! 1 = area fraction, 2 = carbon
   real(r8), allocatable, public :: harvest_rates(:,:) ! harvest rates
   logical, private              :: do_harvest ! whether we're in a period when we should do harvest
   !---------------------------------------------------------------------------

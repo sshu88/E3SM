@@ -76,6 +76,9 @@ module ELMFatesInterfaceMod
    use elm_varpar        , only : i_met_lit, i_cel_lit, i_lig_lit
    use elm_varpar        , only : surfpft_lb, surfpft_ub
    use elm_varpar        , only : natpft_size, cft_size
+   use elm_varpar        , only : max_patch_per_col
+   use elm_varpar        , only : numcft
+   use elm_varpar        , only : maxpatch_urb
    use PhotosynthesisType , only : photosyns_type
    Use TopounitDataType  , only : topounit_atmospheric_flux, topounit_atmospheric_state
    use atm2lndType       , only : atm2lnd_type
@@ -349,7 +352,7 @@ contains
     call SetFatesGlobalElements1(use_fates,natpft_size,0)
 
     natpft_size = fates_maxPatchesPerSite
-
+    max_patch_per_col= max(natpft_size+1, numcft, maxpatch_urb)
 
     return
   end subroutine ELMFatesGlobals1
