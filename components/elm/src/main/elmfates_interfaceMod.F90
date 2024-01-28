@@ -151,7 +151,7 @@ module ELMFatesInterfaceMod
    use EDInitMod             , only : init_patches
    use EDInitMod             , only : set_site_properties
    use EDPftVarcon           , only : EDpftvarcon_inst
-   use EDSurfaceRadiationMod , only : ED_SunShadeFracs, ED_Norman_Radiation
+   use FatesRadiationDriveMod, only : FatesSunShadeFracs, FatesNormalizedCanopyRadiation
    use EDBtranMod            , only : btran_ed, &
                                       get_active_suction_layers
    use EDCanopyStructureMod  , only : canopy_summarization, update_hlm_dynamics
@@ -179,7 +179,9 @@ module ELMFatesInterfaceMod
    use dynSubgridControlMod, only : get_do_harvest ! this gets the namelist value
 
    use FatesInterfaceTypesMod , only : bc_in_type, bc_out_type
-   use CLMFatesParamInterfaceMod         , only : FatesReadParameters
+   use ELMFatesParamInterfaceMod, only : fates_param_reader_ctsm_impl
+   use FatesParametersInterface, only : fates_param_reader_type
+   use FatesParametersInterface, only : fates_parameters_type
    
    use perf_mod          , only : t_startf, t_stopf
 
@@ -295,6 +297,7 @@ contains
     integer                                        :: pass_sp
     integer                                        :: pass_masterproc
     logical                                        :: verbose_output
+    type(fates_param_reader_ctsm_impl)             :: var_reader
 
     if (use_fates) then
 
@@ -349,7 +352,7 @@ contains
     ! want fates to handle crops, so again, it should be ignored.
     ! (RGK 07-2022)
     
-    call SetFatesGlobalElements1(use_fates,natpft_size,0)
+    call SetFatesGlobalElements1(use_fates,natpft_size,0,var_reader)
 
     natpft_size = fates_maxPatchesPerSite
     max_patch_per_col= max(natpft_size+1, numcft, maxpatch_urb)
@@ -512,6 +515,9 @@ contains
         call set_fates_ctrlparms('use_lu_harvest',ival=pass_lu_harvest)
         call set_fates_ctrlparms('num_lu_harvest_cats',ival=pass_num_lu_harvest_types)
         call set_fates_ctrlparms('use_logging',ival=pass_logging)
+        ! temporary set luc related numbers
+        call set_fates_ctrlparms('num_luh2_states',ival=12)
+        call set_fates_ctrlparms('num_luh2_transitions',ival=108)
 
         if(use_fates_ed_st3) then
            pass_ed_st3 = 1
@@ -748,7 +754,7 @@ contains
                ndecomp = 1
             end if
 
-            call allocate_bcin(this%fates(nc)%bc_in(s),col_pp%nlevbed(c),ndecomp,num_harvest_vars,surfpft_lb,surfpft_ub)
+            call allocate_bcin(this%fates(nc)%bc_in(s),col_pp%nlevbed(c),ndecomp,num_harvest_vars,12,108,surfpft_lb,surfpft_ub)
             call allocate_bcout(this%fates(nc)%bc_out(s),col_pp%nlevbed(c),ndecomp)
             call zero_bcs(this%fates(nc),s)
 
@@ -1085,7 +1091,8 @@ contains
 
             call ed_update_site(this%fates(nc)%sites(s), &
                   this%fates(nc)%bc_in(s), &
-                  this%fates(nc)%bc_out(s))
+                  this%fates(nc)%bc_out(s), &
+                  is_restarting = .false.)
       enddo
 
       ! ---------------------------------------------------------------------------------
@@ -1671,9 +1678,17 @@ contains
                   this%fates(nc)%bc_in(s)%max_rooting_depth_index_col = &
                        min(this%fates(nc)%bc_in(s)%nlevsoil, canopystate_inst%altmax_lastyear_indx_col(c))
 
+                  ! When restarting the model, this subroutine has several
+                  ! procedures that are incremental or don't need to be performed for
+                  ! during the restart sequence. For the prior, we don't want the restarted
+                  ! run to call these routines more than would had been called during
+                  ! a continuous simulation period, as it would change results. So
+                  ! we pass in the "is_restarting=.true." flag so we can bypass those procedures
+
                   call ed_update_site( this%fates(nc)%sites(s), &
                         this%fates(nc)%bc_in(s), &
-                        this%fates(nc)%bc_out(s))
+                        this%fates(nc)%bc_out(s), &
+                        is_restarting = .true.)
 
                   ! This call sends internal fates variables into the
                   ! output boundary condition structures. Note: this is called
@@ -1896,7 +1911,8 @@ contains
 
               call ed_update_site(this%fates(nc)%sites(s), &
                    this%fates(nc)%bc_in(s), &
-                   this%fates(nc)%bc_out(s))
+                   this%fates(nc)%bc_out(s), &
+                   is_restarting = .false.)
 
               ! This call sends internal fates variables into the
               ! output boundary condition structures. Note: this is called
@@ -2001,7 +2017,7 @@ contains
         ! as well as total patch sun/shade fraction output boundary condition
         ! -------------------------------------------------------------------------------
 
-        call ED_SunShadeFracs(this%fates(nc)%nsites, &
+        call FatesSunShadeFracs(this%fates(nc)%nsites, &
              this%fates(nc)%sites,  &
              this%fates(nc)%bc_in,  &
              this%fates(nc)%bc_out)
@@ -2509,7 +2525,7 @@ contains
        end do
     end do
 
-    call ED_Norman_Radiation(this%fates(nc)%nsites,  &
+    call FatesNormalizedCanopyRadiation(this%fates(nc)%nsites,  &
          this%fates(nc)%sites, &
          this%fates(nc)%bc_in,  &
          this%fates(nc)%bc_out)
@@ -2937,6 +2953,7 @@ end subroutine wrap_update_hifrq_hist
    use FatesIOVariableKindMod, only : site_coage_r8, site_coage_pft_r8
    use FatesIOVariableKindMod, only : site_can_r8, site_cnlf_r8, site_cnlfpft_r8
    use FatesIOVariableKindMod, only : site_cdpf_r8, site_cdsc_r8, site_cdam_r8
+   use FatesIOVariableKindMod, only : site_landuse_r8, site_lulu_r8
    use FatesIODimensionsMod, only : fates_bounds_type
 
 
@@ -3035,7 +3052,8 @@ end subroutine wrap_update_hifrq_hist
              site_can_r8,site_cnlf_r8, site_cnlfpft_r8, site_scag_r8, &
              site_scagpft_r8, site_agepft_r8, site_elem_r8, site_elpft_r8, &
              site_elcwd_r8, site_elage_r8, site_coage_r8, site_coage_pft_r8, &
-             site_agefuel_r8,site_cdsc_r8, site_cdpf_r8, site_cdam_r8)
+             site_agefuel_r8,site_cdsc_r8, site_cdpf_r8, site_cdam_r8, &
+             site_landuse_r8, site_lulu_r8)
 
            d_index = fates_hist%dim_kinds(dk_index)%dim2_index
            dim2name = fates_hist%dim_bounds(d_index)%name

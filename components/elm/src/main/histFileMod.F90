@@ -28,8 +28,9 @@ module histFileMod
   use FatesInterfaceTypesMod , only : nlevheight_fates => nlevheight
   use FatesInterfaceTypesMod , only : nlevdamage_fates => nlevdamage
   use FatesInterfaceTypesMod , only : nlevcoage
-  use FatesLitterMod        , only : nfsc_fates       => nfsc
-  use FatesLitterMod    , only : ncwd_fates       => ncwd
+  use FatesLitterMod         , only : nfsc_fates       => nfsc
+  use FatesConstantsMod      , only : n_landuse_cats
+  use FatesLitterMod         , only : ncwd_fates       => ncwd
   use FatesInterfaceTypesMod , only : numpft_fates     => numpft
   use PRTGenericMod          , only : nelements_fates  => num_elements
   use TopounitType      , only : top_pp
@@ -1951,6 +1952,8 @@ contains
        call ncd_defdim(lnfid, 'fates_levelcwd', nelements_fates * ncwd_fates, dimid)
        call ncd_defdim(lnfid, 'fates_levelage', nelements_fates * nlevage_fates, dimid)
        call ncd_defdim(lnfid, 'fates_levagefuel', nlevage_fates * nfsc_fates, dimid)
+       call ncd_defdim(lnfid, 'fates_levlanduse', n_landuse_cats, dimid)
+       call ncd_defdim(lnfid, 'fates_levlulu', n_landuse_cats * n_landuse_cats, dimid)
     end if
 
     if ( .not. lhistrest )then
@@ -4828,6 +4831,10 @@ contains
        num2d = nlevcoage*numpft_fates
     case ('fates_levpft')
        num2d = numpft_fates
+    case ('fates_levlanduse')
+       num2d = n_landuse_cats
+    case ('fates_levlulu')
+       num2d = n_landuse_cats * n_landuse_cats
     case ('fates_levage')
        num2d = nlevage_fates
     case ('fates_levfuel')

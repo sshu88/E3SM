@@ -1,11 +1,24 @@
-module CLMFatesParamInterfaceMod
+module ELMFatesParamInterfaceMod
   ! NOTE(bja, 2017-01) this code can not go into the main clm-fates
   ! interface module because of circular dependancies with pftvarcon.
 
   use FatesGlobals, only : fates_log
+  use FatesParametersInterface, only : fates_parameters_type
+  use FatesParametersInterface, only : fates_param_reader_type
   use shr_kind_mod, only : r8 => shr_kind_r8
   
   implicit none
+  private
+
+  ! Extend the fates parameter reader type with Read parameter function
+  type, extends(fates_param_reader_type) :: fates_param_reader_ctsm_impl
+     ! !PRIVATE MEMBER DATA:
+     contains
+     ! !PUBLIC MEMBER FUNCTIONS:
+        procedure, public :: Read ! Read params from disk
+  end type
+
+  public :: fates_param_reader_ctsm_impl
 
   ! NOTE(bja, 2017-01) these methods can NOT be part of the clmi-fates
   ! nterface type because they are called before the instance is
@@ -239,6 +252,26 @@ contains
    deallocate(data)
    call ncd_pio_closefile(ncid)
  end subroutine ParametersFromNetCDF
+
  !-----------------------------------------------------------------------
 
-end module CLMFatesParamInterfaceMod
+ subroutine Read(this, fates_params )
+    !
+    ! !DESCRIPTION:
+    ! Read 'fates_params' parameters from storage.
+    !
+    ! USES
+    use elm_varctl, only : fname_len, paramfile, fates_paramfile
+    ! !ARGUMENTS:
+    class(fates_param_reader_ctsm_impl) :: this
+    class(fates_parameters_type), intent(inout) :: fates_params
+    !-----------------------------------------------------------------------
+    logical :: is_host_file = .false.
+
+    call ParametersFromNetCDF(fates_paramfile, is_host_file, fates_params)
+
+ end subroutine Read
+
+ !-----------------------------------------------------------------------
+
+end module ELMFatesParamInterfaceMod
